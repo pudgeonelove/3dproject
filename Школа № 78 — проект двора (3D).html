@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Школа № 78 · проект двора</title>
+<style>
+:root{--bg:rgba(255,255,255,.9);--fg:#1d2a24;--mut:#5d6b64;--acc:#2f6f55;--on:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:rgba(28,33,30,.9);--fg:#eef3ee;--mut:#a5b3ab;--acc:#5fb88f;--on:#0f1a14}}
+:root[data-theme="dark"]{--bg:rgba(28,33,30,.9);--fg:#eef3ee;--mut:#a5b3ab;--acc:#5fb88f;--on:#0f1a14}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0;background:#dbe7f0;overflow:hidden;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#ui{position:fixed;left:10px;right:10px;top:calc(env(safe-area-inset-top,0px) + 10px);bottom:calc(env(safe-area-inset-bottom,0px) + 10px);display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
+#cap{align-self:flex-start;background:var(--bg);color:var(--fg);padding:8px 12px;border-radius:12px;max-width:min(92%,420px);backdrop-filter:blur(6px)}
+#cap b{display:block;font-size:15px}#cap span{font-size:13px;color:var(--mut)}
+.bars{display:flex;flex-direction:column;gap:8px;align-items:center}
+.bar{display:flex;gap:4px;background:var(--bg);padding:4px;border-radius:14px;pointer-events:auto;backdrop-filter:blur(6px)}
+button{font:inherit;font-size:14px;border:0;border-radius:10px;padding:9px 14px;background:transparent;color:var(--fg);cursor:pointer}
+button.on{background:var(--acc);color:var(--on)}
+.sheet{position:fixed;left:10px;right:10px;top:calc(env(safe-area-inset-top,0px) + 62px);bottom:calc(env(safe-area-inset-bottom,0px) + 112px);overflow:auto;background:var(--bg);color:var(--fg);border-radius:14px;padding:10px 12px;backdrop-filter:blur(8px);display:none;font-size:12.5px}
+.sheet table{width:100%;border-collapse:collapse}.sheet td,.sheet th{padding:4px 3px;text-align:right;vertical-align:top}.sheet td:first-child,.sheet th:first-child{text-align:left}
+.sheet .g td{font-weight:600;color:var(--acc);padding-top:9px;text-align:left}.sheet tr.t td{font-weight:700;border-top:1px solid var(--mut)}.sheet small{color:var(--mut);display:block;margin-top:8px;line-height:1.35}
+.bar button{padding:8px 11px;font-size:13px}
+</style>
+</head>
+<body>
+<div id="ui">
+<div id="cap"><b>Школа № 78, Бишкек</b><span id="sub"></span></div>
+<div id="sm" class="sheet"></div>
+<div class="bars">
+<div class="bar"><button data-m="before">Было</button><button data-m="after" class="on">Стало</button><button id="sb">Смета</button></div>
+<div class="bar"><button data-v="gen">Общий вид</button><button data-v="top">Сверху</button><button data-v="walk">Тропинка</button><button data-v="pl">Площадка</button></div>
+</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(()=>{
+const T=THREE,b2a=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const NX=51,NZ=34,X0=-5.145,Z0=-3.476,ST=0.18;
+const Hd=new Int8Array(b2a('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').buffer),Gd=b2a('wsLCwsLCwsLCwsLCwsLCwsLCwsG5qqSpsLa/wcLCw8jP08u+vsDK3suemKq+wsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLBvbCfjISKj5mlr7W7x9La4NK4ur/I1rSDj7O8wMLCwsLCwsLCwsLCwsLCwsLCwsLCwr6ynYh9a19kaXd+hY2fwdvn7tqws7fD1seXn6ywusHCwsLCwsLCwsLCwsLCwsLCwsLAt6mWfV9UTkQ/R1VUXGV7qtrv89yxs7C21N/CnJupt7/CwsLCwsLCwsLCwsLCwsLCwbiqmox+Y0E8QUI8QEc8PEFdiMnn7tvHvq2vz+bUtKastLzBwsLCwsLCwsLCwsLCwsK/tqKOfGlgVUdBTEpFQ0c9PD5fcq3h8eLKuK+ywN3Xzruvs7rAwsLCwsLCwsLCwsLCwLy1qpN2YFJOUk1OWlZKRUhFRVplbJfV7+3TxL+jqc3NxLSttru+wcLCwsLCwsLCwsG/urKtoI1rX11cVUpRXmBNSE9WXWNpeJDA5+3l2biLnMCllJKss7G3v8LCwsLCwsLCwb64s6qim454bmprcmpwamRjc3BpaGt5gY6pz+7r5NCgoJt/dXCRqrG4vsHCwsLCwsG/vLuzr6icn5aAf4OEg4F/eHmLkYZxa3WBgo+cs+Hs6OLEq4luZ3quvLe6vL3BwsK/vr68t7ayqamkpaCPlJyYlpGSl5iUj4d+goqPk5OVnb/n7Ojbx6uuubi8urm3s7m/wbywrre5tbGxqqquraqop6WgoaKjp6Wgm5WVnZyZnJWVmKXV7ejg2s/KyLi0s7Grsru/t66hl6aztLKwsre3tLOyrKikp6qqqaysqaWoq6iopqOhnJ664+vk3dfX1MG5tqyrt77AqZ6WiZCntLm6vLy8uLW0sLCtsbS4trOyrKatr7Gysa6rpaKqyejk3NfX19fEsrG1u8DCn4+FjpamtLnBw8C+urW0tLOytbm5urq4tLO1s7m5uLW0sKywuNjs5dvU1NrTwK+zvcHBk350kKSlr7S6xsTBvbm2tLO0t7q4ubu7vLy8vcHBv769uLi7u8TY4N3V0dDNzsa8u76+mIuHlJ+hpaqyx8jEvre0tbe3ubu6ubq9vr28u7u6vsHAubu9vbmwv8zEvLm6vMK+t7azr6efnKm2vr61urS1trSvtLu6uLa1tbS2uLWqp66xuL+/wb+7u7WenquhoJ6Zm6itp6iosKmkqbi/w8G0pqarq6+vs7q3tbOxsrKztrSqrLa4vcTDxMTDwrahnqWjp6WimJmbnJSQrqakq7jAwb6zsbCuqKaptr6/v729vb7Av7enpbS7wcXGxsjGxr6vo5yosKynpKOhpZmQraOmrLW+vruytLWtpamwuby9vLy7ury8vbekl6SmpLG0r7y+tqejlY6hr6SdpKmvtJqJqaWrrLW7urWutLOnpKars7a2uLu7u7q1saqXhYd3XGh4b4+gknFpYmh9jZuntrq7uamfraqurrW6uri1sa2gmpicqK+xtbi3tbKuqJ+LeWxUQj9HSmJzdF1MREhaZnqPorm/tcDFr6yvr7O5vLq2q5uQjIySm5+jq6+xrqurpZuHclE8PDw8PEtbZFU8PDw8T3F4f6qwuMXMsrCrrLa6uri0n4mJi4qPlJeaoqeqpqWknZF/a0c8PDw8PGJxcWVNPDw8PFxmdZmswMfMsq+qqra1trSvqpOTjIiMk5ujo6qtqqaop56Kb0k8PDw8PFxeU1BXUDw8PFpZaYyqvcTFsLGoqLW0sKursaSfjImLj5uwpqqqp5egqaeihVk8PDw8PEVLRD0/PkA8PExUaoSVr72/u7esqbSvqKansKuroJydoKy6rrCwp5mjq6qoik08PDw8PDxFPzw8PDw8PD1RZGBohKe2vLqtp6+rpJ6eqqqvs7Gwsbm+t7i3raevtLOvk2FKRkg/PEtiSDxASktUTkNFU05PZYeourSosbSro5maqayxuL7AwMHBv7++ure6vLy4pYd9e3xwbXaDZ1lpdnh9d2JOTlFadYybtKOXs7OonpKWqKuyusDCwsLCwsLCwsHCwsLBvbOwr66joKSqlo2Xo6SkkHRhZHF6jKKrp5qVpaifmYqHnaixusHCwsLCwsLCwsLCwsLCwsLCwsLBwcHBvry+wcG7o42Ag5Keqbi+raelopODmYVah7G3vcHCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLBuqqho6+8wMLCubSrlIaHmH9PcrC6vsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsC+vsHCwsLC');
+let sd=11;const rnd=()=>(sd=sd*16807%2147483647)/2147483647;
+const R=new T.WebGLRenderer({antialias:true});R.setPixelRatio(Math.min(devicePixelRatio,2));R.shadowMap.enabled=true;document.body.appendChild(R.domElement);
+const S=new T.Scene(),sky=0xdbe7f0;S.background=new T.Color(sky);S.fog=new T.Fog(sky,45,95);
+const cam=new T.PerspectiveCamera(45,1,.1,220),ctl=new T.OrbitControls(cam,R.domElement);
+ctl.enableDamping=true;ctl.maxPolarAngle=1.52;ctl.minDistance=2;ctl.maxDistance=70;
+S.add(new T.HemisphereLight(0xffffff,0x9a8f7a,.8));
+const sun=new T.DirectionalLight(0xfff1d6,.95);sun.position.set(-4,26,-20);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera,{left:-24,right:24,top:24,bottom:-24,far:80});sun.target.position.set(9,0,-4);S.add(sun,sun.target);
+const A=new T.Group(),B=new T.Group();S.add(A,B);
+const M=(c,o)=>new T.MeshStandardMaterial(Object.assign({color:c,flatShading:true,roughness:.9},o));
+const put=(o,x,y,z,g)=>{o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;(g||S).add(o);return o};
+const box=(w,h,d,x,y,z,m,g)=>put(new T.Mesh(new T.BoxGeometry(w,h,d),m),x,y,z,g);
+const cyl=(rb,h,x,y,z,m,g,n,rt)=>put(new T.Mesh(new T.CylinderGeometry(rt===undefined?rb:rt,rb,h,n||8),m),x,y,z,g);
+const cone=(r,h,x,y,z,m,g)=>put(new T.Mesh(new T.ConeGeometry(r,h,7),m),x,y,z,g);
+const ico=(r,x,y,z,sx,sy,sz,m,g)=>{const o=put(new T.Mesh(new T.IcosahedronGeometry(r,0),m),x,y,z,g);o.scale.set(sx,sy,sz);return o};
+
+/* ground scanned from the real path */
+const N=NX*NZ,pos=new Float32Array(N*3),cA=new Float32Array(N*3),cB=new Float32Array(N*3),yB=new Float32Array(N);
+for(let j=0;j<NZ;j++)for(let i=0;i<NX;i++){const k=j*NX+i,g=Gd[k]/255,n=rnd();pos[k*3]=X0+i*ST;pos[k*3+2]=Z0+j*ST;yB[k]=Hd[k]/100;
+cB.set([g*1.02,g*.95,g*.85],k*3);cA.set([.5+.08*n,.64+.08*n,.36+.05*n],k*3)}
+const ix=[];for(let j=0;j<NZ-1;j++)for(let i=0;i<NX-1;i++){const a=j*NX+i,b=a+1,c=a+NX,d=c+1;ix.push(a,c,b,b,c,d)}
+const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(pos,3));geo.setAttribute('color',new T.BufferAttribute(new Float32Array(N*3),3));geo.setIndex(ix);
+const terr=new T.Mesh(geo,M(0xffffff,{vertexColors:true,roughness:1}));terr.receiveShadow=true;S.add(terr);
+const gp=new T.Mesh(new T.PlaneGeometry(240,240),M(0x8fa66a,{flatShading:false}));gp.rotation.x=-Math.PI/2;gp.position.y=-.03;gp.receiveShadow=true;S.add(gp);
+
+/* school wall: the building corner is at x=-3.8 (from the scan) */
+const wl=M(0xe4d3a2),pil=M(0xd6c58f);
+box(36,4.4,3.2,14.2,2.2,2.74,wl);box(36,.7,.1,14.2,.35,1.12,M(0xb7ae9c));box(36,.2,.3,14.2,4.3,1.05,pil);
+for(let x=-2.2;x<32;x+=1.6)box(.35,3.6,.08,x,2,1.1,pil);
+cyl(.05,4.2,-3.65,2.1,1.06,M(0x8d949a));
+box(2.3,.05,.6,1.15,.02,.84,M(0x24282c));[0,2.3].forEach(x=>box(.05,.9,.05,x,.45,.54,st0()));box(2.3,.05,.05,1.15,.9,.54,st0());
+function st0(){return M(0x34393f)}
+
+/* trees */
+const LG=[0x6f9a4a,0x5d8a3f,0x7aa655],LY=[0xd9a93a,0xc98f2b,0xe0b84a],tm=M(0x6a5848),wm=M(0xe9e5da);
+const KT={ash:[1.5,1.3,.95,1.3],glob:[1.5,1.05,.95,1.05],cat:[1.4,1.5,.85,1.5],apple:[1,.9,.8,.9]};
+function tree(g,x,z,s,k,wh,col){
+if(k=='thuja'){cyl(.12*s,.5*s,x,.25*s,z,tm,g,6);cone(.62*s,2.7*s,x,1.7*s,z,M(0x2f5f3a),g);return}
+if(k=='ball'){cyl(.1*s,.4*s,x,.2*s,z,tm,g,6);ico(.6*s,x,.75*s,z,1,1,1,M(0x3b7044),g);return}
+if(k=='jun'){ico(.7*s,x,.3*s,z,1.5,.45,1.5,M(0x3f6f4a),g);return}
+const lc=col||LG[Math.floor(rnd()*3)];
+if(k=='pop'){const h=2.6*s;cyl(.13*s,h,x,h/2,z,tm,g,6,.08*s);if(wh)cyl(.14*s,.9,x,.45,z,wm,g,6);ico(1,x,h+1.1*s,z,.6*s,1.9*s,.6*s,M(lc),g);return}
+const q=KT[k],h=q[0]*s;cyl(.13*s,h,x,h/2,z,tm,g,6,.08*s);if(wh)cyl(.14*s,.9,x,.45,z,wm,g,6);
+ico(1,x,h+q[2]*s*.8,z,q[1]*s,q[2]*s,q[3]*s,M(lc),g);if(k=='ash')ico(1,x+.5*s,h+.4*s,z+.3*s,.8*s,.6*s,.8*s,M(lc),g)}
+
+/* BEFORE: overgrown yard, fallen leaves */
+const ty=['ash','pop','thuja','thuja','ash'];
+for(let i=0;i<55;i++)tree(B,-6+rnd()*31,-13+rnd()*9.2,.8+rnd()*.5,ty[i%5],true,(LY)[i%3]);
+const lp=new Float32Array(2400);for(let i=0;i<800;i++){lp[i*3]=-6.5+rnd()*31;lp[i*3+1]=.02+rnd()*.05;lp[i*3+2]=-12+rnd()*12.5}
+const pg=new T.BufferGeometry();pg.setAttribute('position',new T.BufferAttribute(lp,3));B.add(new T.Points(pg,new T.PointsMaterial({color:0xc9952f,size:.11})));
+
+/* AFTER: a gently curved path (not parallel to the wall), plaza, shelters */
+const CP=new T.CatmullRomCurve3([[-6.5,-.3],[-2,-1],[3,-1.9],[8.5,-2.5],[14,-2.3],[19,-3.2],[24,-4.3]].map(p=>new T.Vector3(p[0],0,p[1]))),PL=CP.getLength();
+function at(t,o){const p=CP.getPointAt(t),d=CP.getTangentAt(t),nx=d.z,nz=-d.x;return{x:p.x+nx*o,z:p.z+nz*o,nx,nz,a:Math.atan2(-d.z,d.x)}}
+function chain(o,w,h,y,cols,n,t0,t1){const ms=cols.map(c=>M(c)),L=(t1-t0)*PL/n;for(let i=0;i<n;i++){const q=at(t0+(t1-t0)*(i+.5)/n,o);box(L*1.05,h,w,q.x,y,q.z,ms[i%ms.length],A).rotation.y=q.a}}
+chain(0,2.4,.08,.04,[0xd2d0c9,0xc4c2bb],46,0,1);
+chain(-1.28,.1,.14,.07,[0x8a8a86],46,0,1);chain(1.28,.1,.14,.07,[0x8a8a86],18,0,.385);chain(1.28,.1,.14,.07,[0x8a8a86],14,.68,1);
+const PX=9.8,PZ=-7.6,pv=M(0xd6c7b0),wd=M(0xb98b5a),st=M(0x34393f);
+cyl(4.32,.12,PX,.06,PZ,M(0x8a8a86),A,32);cyl(4.2,.14,PX,.07,PZ,pv,A,32);cyl(3.1,.15,PX,.075,PZ,M(0xe3d9c6),A,32);cyl(1.1,.16,PX,.08,PZ,M(0x7d6a55),A,18);
+function bench(g,x,z,rot,len){const b=new T.Group();box(len,.06,.42,0,.46,0,wd,b);box(len,.38,.05,0,.76,-.2,wd,b);
+box(.06,.44,.4,-len/2+.1,.22,0,st,b);box(.06,.44,.4,len/2-.1,.22,0,st,b);b.position.set(x,.12,z);b.rotation.y=rot;g.add(b)}
+const rad=d=>d*Math.PI/180;
+[-165,-135,-105,-75,-45,-15].forEach(d=>{const f=rad(d);bench(A,PX+2.9*Math.cos(f),PZ+2.9*Math.sin(f),-f-Math.PI/2,1.5)});
+[-166,-140,-114,-88,-62,-36,-10].forEach(d=>{const f=rad(d);bench(A,PX+3.8*Math.cos(f),PZ+3.8*Math.sin(f),-f-Math.PI/2,1.5)});
+[.1,.36,.6,.88].forEach(t=>{const q=at(t,-1.75);bench(A,q.x,q.z,Math.atan2(q.nx,q.nz),1.6)});
+function shelter(t){const q=at(t,2.3),g=new T.Group(),gl=M(0xbfe3ee,{transparent:true,opacity:.35,flatShading:false});
+box(2.4,.06,1.4,0,.03,0,M(0xcfcdc6),g);
+for(const a of[-1,1])for(const b of[-1,1])box(.07,2.3,.07,a*1.08,1.21,b*.55,st,g);
+const r=box(2.6,.07,1.6,0,2.4,0,M(0x2f6f6a),g);r.rotation.x=.06;
+box(2.2,1.7,.03,0,1.2,-.55,gl,g);box(.03,1.7,1,-1.08,1.2,0,gl,g);box(.03,1.7,1,1.08,1.2,0,gl,g);
+box(1.8,.06,.4,0,.46,-.3,wd,g);box(1.8,.35,.04,0,.75,-.5,wd,g);g.position.set(q.x,0,q.z);g.rotation.y=Math.atan2(-q.nx,-q.nz);A.add(g)}
+const SH=[.16,.3,.82];SH.forEach(shelter);
+function lamp(x,z){cyl(.04,3.2,x,1.6,z,st,A,6);ico(.13,x,3.3,z,1,1,1,M(0xffe2a0,{emissive:0xffcf70,emissiveIntensity:.8}),A)}
+let nL=0;for(let i=0;i<8;i++){const q=at(.04+.12*i,-1.45);lamp(q.x,q.z);nL++}
+[-150,-100,-50,-10].forEach(d=>{const f=rad(d);lamp(PX+4.55*Math.cos(f),PZ+4.55*Math.sin(f));nL++});
+function bin(x,z){cyl(.22,.8,x,.4,z,M(0x2f6b4f),A,10);cyl(.24,.06,x,.83,z,st,A,10)}
+[.1,.33,.58,.85].forEach(t=>{const q=at(t,1.5);bin(q.x,q.z)});[-15,-75,-105,-165].forEach(d=>{const f=rad(d);bin(PX+4.6*Math.cos(f),PZ+4.6*Math.sin(f))});
+const sg=new T.Group();box(.08,1.9,.08,-.8,.95,0,st,sg);box(.08,1.9,.08,.8,.95,0,st,sg);box(1.8,1,.06,0,1.5,0,M(0x2f6f55),sg);sg.position.set(PX,0,PZ+2.4);sg.rotation.y=Math.PI;A.add(sg);
+const gr=M(0x3f8f86);cyl(.07,.9,4.4,.45,-6,gr,A,6);box(.25,.07,.07,4.5,.85,-6,gr,A);
+
+/* plants: every count below feeds the estimate */
+const TH=[],TB=[],JU=[],GL=[],CA=[],AP=[],LI=[],SPi=[],BA=[],LV=[],FE=[];
+for(let i=0;i<8;i++)TH.push([-1+i*3.1,-12.8+Math.sin(i)*.3]);
+[[-2.4,-5.4],[4.2,-4.8],[16.8,-5.4],[20.5,-6.2],[-4.6,-3.6],[23,-8]].forEach(p=>TB.push(p));
+[[-.8,-4.9],[2.2,-6.4],[15.5,-8.5],[19,-9.4],[22.5,-5],[-3.8,-7.2]].forEach(p=>JU.push(p));
+[[PX,PZ],[5.2,-3.9],[14.6,-3.9],[21,-4.6],[2.6,-8.6]].forEach(p=>GL.push(p));
+[[16.5,-10.6],[2,-10.6]].forEach(p=>CA.push(p));
+[[-4,-9.5],[7.6,-12],[21.5,-10.5]].forEach(p=>AP.push(p));
+for(let i=0;i<6;i++)LI.push([-5.6+Math.cos(i*1.05)*1.5,-6.2+Math.sin(i*1.05)*1.5]);
+const bed=(t0,t1,n,o,a,f)=>{for(let i=0;i<n;i++){const q=at(t0+(t1-t0)*i/(n-1),o+(rnd()-.5)*.5);a.push([q.x,q.z])}};
+bed(.02,.13,20,1.8,LV);bed(.86,.99,25,1.8,FE);bed(.4,.52,12,-2,BA);bed(.62,.8,12,-2,SPi);
+TH.forEach(p=>tree(A,p[0],p[1],1.15,'thuja'));TB.forEach(p=>tree(A,p[0],p[1],1,'ball'));JU.forEach(p=>tree(A,p[0],p[1],1,'jun'));
+GL.forEach((p,i)=>tree(A,p[0],p[1],i?1:1.15,'glob',false,0x5f9140));CA.forEach(p=>tree(A,p[0],p[1],1.15,'cat',false,0x86ad58));AP.forEach(p=>tree(A,p[0],p[1],1,'apple',false,0x8a4f6e));
+LI.forEach(p=>ico(.5,p[0],.45,p[1],1,.9,1,M(0x5d8a3f),A));SPi.forEach(p=>ico(.4,p[0],.32,p[1],1,.8,1,M(0xd8b640),A));BA.forEach(p=>ico(.38,p[0],.3,p[1],1,.8,1,M(0x7a2e4a),A));
+LV.forEach(p=>ico(.22,p[0],.16,p[1],1.2,.7,1.2,M(0x8e86b3),A));FE.forEach(p=>cone(.1,.55,p[0],.28,p[1],M(0x9db8b2),A));
+const HG=[[.68,.8,1.75],[.84,.96,-1.75]];let hl=0;HG.forEach(h=>{const n=Math.round((h[1]-h[0])*PL/.9);hl+=(h[1]-h[0])*PL;chain(h[2],.5,.75,.38,[0x2f5d34,0x356b3a],n,h[0],h[1])});
+const old=[[-5.5,-4.5],[3.4,-4.4],[18.5,-5.2]];tree(A,-5.7,-4.5,1.1,'pop');tree(A,-5.3,-4.3,1.1,'pop');tree(A,-5.5,-4.8,1.1,'pop');tree(A,3.4,-4.4,1.15,'ash');const y2=cyl(.09,1.8,3.7,1.2,-4.4,tm,A,6);y2.rotation.z=-.35;tree(A,18.5,-5.2,1.1,'ash');
+
+/* estimate (prices in som; L = Lalafo.kg 2026, M = municipal data, O = estimate) */
+const area=Math.round(PL*2.4+Math.PI*4.2*4.2+10),curb=Math.round(PL*(1.8-.12)+2*Math.PI*4.3+0);
+const RW=[['Дорожки и площадка'],
+['Тротуарная плитка (брусчатка)','м²',area,550,'L'],['Основание (щебень, песок) и укладка','м²',area,800,'O'],['Бордюр бетонный','м',curb,250,'O'],
+['Малые формы'],
+['Скамья с навесом 2 м, металл + поликарбонат','шт',SH.length,25000,'L'],['Скамья со спинкой и подлокотниками','шт',17,7000,'L'],['Урна с навесом','шт',8,3500,'L'],
+['Светодиодная опора освещения','шт',nL,7000,'L'],['Кабель, траншея, подключение','м',100,600,'O'],['Информационный стенд','шт',1,12000,'O'],['Ограждение приямка у стены','компл.',1,12000,'O'],
+['Деревья'],
+['Туя западная «Смарагд» 2–2,3 м','шт',TH.length,2000,'L'],['Туя западная шаровидная','шт',TB.length,2200,'L'],['Можжевельник казацкий','шт',JU.length,1500,'O'],
+['Клён остролистный «Глобозум»','шт',GL.length,6500,'M'],['Катальпа бигнониевидная, крупномер','шт',CA.length,7800,'M'],['Яблоня декоративная Недзвецкого','шт',AP.length,2500,'O'],
+['Кустарники и травы'],
+['Сирень обыкновенная','шт',LI.length,800,'O'],['Спирея японская','шт',SPi.length,350,'O'],['Барбарис Тунберга «Атропурпуреа»','шт',BA.length,400,'O'],['Лаванда узколистная','шт',LV.length,250,'O'],
+['Овсяница сизая','шт',FE.length,200,'O'],['Бирючина обыкновенная (живая изгородь)','шт',Math.round(hl*3),150,'O'],
+['Подготовка и посадка'],
+['Спил старых деревьев и кустов, вывоз','шт',14,3000,'O'],['Планировка территории, техника','компл.',1,40000,'O'],['Плодородный грунт','м³',30,900,'O'],['Мульча и декоративная щебёнка','м³',12,1500,'O'],
+['Капельный полив','м',150,120,'O'],['Посадочные работы','компл.',1,25000,'O']];
+const f=n=>Math.round(n).toLocaleString('ru-RU');let sum=0,h='<table><tr><th>Позиция</th><th>Кол.</th><th>Цена</th><th>Сумма</th></tr>';
+RW.forEach(r=>{if(r.length==1){h+='<tr class="g"><td colspan="4">'+r[0]+'</td></tr>';return}const s=r[2]*r[3];sum+=s;h+='<tr><td>'+r[0]+' <small>'+r[4]+'</small></td><td>'+r[2]+' '+r[1]+'</td><td>'+f(r[3])+'</td><td>'+f(s)+'</td></tr>'});
+h+='<tr class="t"><td colspan="3">Итого</td><td>'+f(sum)+'</td></tr><tr class="t"><td colspan="3">С запасом 10 % на непредвиденное</td><td>'+f(sum*1.1)+'</td></tr></table><small>L — цены из объявлений Lalafo.kg (Бишкек, 2026). M — муниципальные закупки и программы (цены прошлых лет, сейчас выше). O — оценка: уточнить у поставщика или подрядчика. Спил деревьев в городе требует разрешения мэрии. Это ориентир, не коммерческое предложение.</small>';
+const sm=document.getElementById('sm');sm.innerHTML=h;document.getElementById('sb').onclick=()=>{sm.style.display=sm.style.display=='block'?'none':'block'};
+
+/* modes and views */
+const sub=document.getElementById('sub'),mb=[...document.querySelectorAll('[data-m]')];
+function setMode(m){const a=m=='after';A.visible=a;B.visible=!a;
+for(let k=0;k<N;k++)pos[k*3+1]=a?0:yB[k];geo.attributes.position.needsUpdate=true;geo.attributes.color.array.set(a?cA:cB);geo.attributes.color.needsUpdate=true;geo.computeVertexNormals();
+gp.material.color.set(a?0x8fa66a:0xb7a68b);
+sub.textContent=a?'Стало: тропинка с плавным изгибом, площадка для собраний, навесы от дождя и снега':'Было: заросли, голая земля и опавшая листва';
+mb.forEach(b=>b.classList.toggle('on',b.dataset.m==m))}
+mb.forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+const V={gen:[[26,12,-24],[8,0,-4]],top:[[9,38,-5],[9,0,-4.9]],walk:[[-6.5,1.7,.3],[9,1.2,-2.4]],pl:[[9.8,6.5,-17],[9.8,.5,-7.6]]};
+let tw=null;document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{const v=V[b.dataset.v];tw={p:new T.Vector3(...v[0]),t:new T.Vector3(...v[1])}});
+cam.position.set(...V.gen[0]);ctl.target.set(...V.gen[1]);
+function fit(){R.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}
+addEventListener('resize',fit);fit();setMode('after');
+(function loop(){requestAnimationFrame(loop);if(tw){cam.position.lerp(tw.p,.08);ctl.target.lerp(tw.t,.08);if(cam.position.distanceTo(tw.p)<.03)tw=null}ctl.update();R.render(S,cam)})();
+})();
+</script>
+</body>
+</html>
